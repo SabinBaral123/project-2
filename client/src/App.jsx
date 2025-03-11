@@ -6,7 +6,7 @@ function App() {
 
   return (
     <>
-      Project 2
+    <Socket/>
     </>
   )
 }
