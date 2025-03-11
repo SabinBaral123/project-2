@@ -1,5 +1,6 @@
 import express from "express";
 import http from "http";
+import { Server } from "socket.io";
 
 // Reads PORT from the OS, the --env-file flag, or defaults to 9000
 const PORT = process.env.PORT || 9000;
@@ -28,6 +29,12 @@ app.use((req, _res, next) => {
 // Creating an httpServer using the express configuration
 // https://nodejs.org/api/http.html#httpcreateserveroptions-requestlistener
 const httpServer = http.createServer(app);
+
+// new socket server 
+const io = new Server(httpServer, {});
+
+// socket event handling 
+io.compress("connect", (socket) => console.log("New Connection established"));
 
 // Start the server listening on PORT, then call the callback (second argument)
 httpServer.listen(PORT, () => console.log(`Listening on port ${PORT}`))
