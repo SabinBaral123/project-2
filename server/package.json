@@ -1,0 +1,15 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "Project 2 -Server",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "watch": "node --watch server.js"
+  },
+  "author": "Sabin Baral",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
