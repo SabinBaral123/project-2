@@ -1,6 +1,7 @@
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
+import * as data from "./data.js";
 
 // Reads PORT from the OS, the --env-file flag, or defaults to 9000
 const PORT = process.env.PORT || 9000;
@@ -36,59 +37,60 @@ const httpServer = http.createServer(app);
 const io = new Server(httpServer, {});
 
 // socket event handling
-io.on("connect", socket => {
-    console.log("New connection", socket.id);
+// io.on("connect", socket => {
+//     console.log("New connection", socket.id);
 
-    // Client will have to emit "join" with joinInfo
-    socket.on("join", joinInfo => {
-        console.log(joinInfo);
-        // The client has to be sending joinInfo in this format
-        const { roomName, userName } = joinInfo;
+//     // Client will have to emit "join" with joinInfo
+//     socket.on("join", joinInfo => {
+//         console.log(joinInfo);
+//         // The client has to be sending joinInfo in this format
+//         const { roomName, userName } = joinInfo;
 
-        // Using socket.data to keep track of the new client identifier: userName
-        socket.data.userName = userName; // keep track of unique user identifier
+//         // Using socket.data to keep track of the new client identifier: userName
+//         socket.data.userName = userName; // keep track of unique user identifier
 
-        // Add the socket to the roomName room
-        socket.join(roomName);
+//         // Add the socket to the roomName room
+//         socket.join(roomName);
 
-        // socket.id is a "connection id" and works as a "single socket room" for direct messages
-      	// socket.emit("joined", roomName); // equivalent call
-        io.to(socket.id).emit("joined", { roomName, userName });
+//         // socket.id is a "connection id" and works as a "single socket room" for direct messages
+//       	// socket.emit("joined", roomName); // equivalent call
+//         io.to(socket.id).emit("joined", { roomName, userName });
 
-        // Add your own event emit here
-      	// So that clients on the room can be notified that a new user as joined
-        socket.to(roomName).emit("user-joined", `${userName} has joined the ${roomName}`);
-    });
+//         // Add your own event emit here
+//       	// So that clients on the room can be notified that a new user as joined
+//         socket.to(roomName).emit("user-joined", `${userName} has joined the ${roomName}`);
+//     });
+io.on("connect", (socket) => {
+  console.log("New connection", socket.id);
 
+  socket.on("join", (joinInfo) => {
+    const { roomName, userName } = joinInfo;
 
-  // Hook-up the "broadcast to lab-14" listener
-  socket.on("broadcast to lab-14", (dataSentWithClientEmit) => {
-    io
-      .to("lab-14")
-      .emit(
-        "a lab-14 broadcast",
-        `${socket.id} sent ${dataSentWithClientEmit}`
-      );
-    // io.to("lab-14") would emit to everyone in the room, including the socket that sent the message
-    // socket.to(room) emits to everyone in the room, but excludes the socket who sent the message
+    if (data.isUserNameTaken(userName)) {
+      joinInfo.error = `The name ${userName} is already taken`;
+    } else {
+      data.registerUser(userName);
+      socket.data = joinInfo;
+      socket.join(roomName);
+      socket.on("disconnect", () => data.unregisterUser(userName));
+      data.addMessage(roomName, {
+        sender: "",
+        text: `${userName} has joined room ${roomName}`,
+      });
+      io.to(roomName).emit("chat update", data.roomLog(roomName));
+
+      socket.on("message", (text) => {
+        const { roomName, userName } = socket.data;
+        const messageInfo = { sender: userName, text };
+        console.log(roomName, messageInfo);
+        data.addMessage(roomName, messageInfo);
+        io.to(roomName).emit("chat update", data.roomLog(roomName));
+      });
+    }
+
+    console.log(joinInfo);
+    socket.emit("join-response", joinInfo);
   });
-  socket.emit(
-    "a hello from the server",
-    `hello ${socket.id}!`
-  );
-  // Add new socket to the room
-  socket.join("lab-14");
-
-  // Count how many sockets are currently in the room, then broadcast that total
-  // fetchSockets is async. Using then to resolve it
-  io.in("lab-14")
-    .fetchSockets()
-    .then((socketsInRoom) => {
-      io.to("lab-14").emit(
-        "room update",
-        `There are ${socketsInRoom.length} sockets in lab-14`
-      );
-    });
 });
 // Start the server listening on PORT, then call the callback (second argument)
 httpServer.listen(PORT, () => console.log(`Listening on port ${PORT}`));
