@@ -19,6 +19,8 @@ const addMessage = (room, messageInfo) => {
     if (!roomLogs[room]) {
         roomLogs[room] = [];
     }
+    messageInfo.timestamp = Date.now();
+
     roomLogs[room].push(messageInfo);
 }
 

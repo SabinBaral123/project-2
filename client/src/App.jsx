@@ -5,14 +5,15 @@ import Header from "./components/Header";
 import Login from "./components/Login";
 import "./App.css";
 import io from "socket.io-client";
+import logo from "./assets/sms.png";
 
 import { createTheme, ThemeProvider } from "@mui/material";
-import { red } from "@mui/material/colors";
+import { green } from "@mui/material/colors";
 
 const theme = createTheme({
   palette: {
     primary: {
-      main: red[800],
+      main: green[800],
     },
   },
 });
@@ -65,7 +66,8 @@ useEffect(() => {
 
 return (
   <ThemeProvider theme={theme}>
-      <Header title="App Name - Sabin Baral" />
+      <Header title="TEE (Text Event Emitter) - [Sabin Baral]" />
+      <img src={logo} alt="App Logo" width="100" />
       {
           hasJoined() ?
           <Chat {...joinInfo} sendMessage={sendMessage} chatLog={chatLog}/>

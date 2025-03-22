@@ -76,12 +76,13 @@ io.on("connect", (socket) => {
       data.addMessage(roomName, {
         sender: "",
         text: `${userName} has joined room ${roomName}`,
+        timestamp: Date.now(),
       });
       io.to(roomName).emit("chat update", data.roomLog(roomName));
 
       socket.on("message", (text) => {
         const { roomName, userName } = socket.data;
-        const messageInfo = { sender: userName, text };
+        const messageInfo = { sender: userName, text,timestamp:Date.now };
         console.log(roomName, messageInfo);
         data.addMessage(roomName, messageInfo);
         io.to(roomName).emit("chat update", data.roomLog(roomName));

@@ -20,12 +20,15 @@ const Chat = (props) => {
   const renderChatLog = () => {
     const chat = props.chatLog ?? [];
     return chat.map((message, index) => (
-      <div key={index}>
+      <div key={index} style={{ textAlign: message.sender ? "left" : "center" }}>
         <Typography ref={lastMessageRef} variant="h6">
           {message.sender
-            ? `[${message.sender}] ${message.text}`
-            : `${message.text}`}
+            ? `${message.sender} : ${message.text}`
+            : message.text}
         </Typography>{" "}
+        <Typography variant="caption" color="gray">
+          {new Date(message.timestamp).toLocaleString()}{" "}
+        </Typography>
       </div>
     ));
   };
