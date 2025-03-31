@@ -2,6 +2,7 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import * as data from "./data.js";
+import * as colors from "./colour.js";
 
 // Reads PORT from the OS, the --env-file flag, or defaults to 9000
 const PORT = process.env.PORT || 9000;
@@ -70,9 +71,14 @@ io.on("connect", (socket) => {
       joinInfo.error = `The name ${userName} is already taken`;
     } else {
       data.registerUser(userName);
+      // Adding the generated color to the joinInfo object
+      joinInfo.color = colors.getRandomColor();
       socket.data = joinInfo;
       socket.join(roomName);
-      socket.on("disconnect", () => data.unregisterUser(userName));
+      socket.on("disconnect", () => {
+        data.unregisterUser(userName);
+        colors.releaseColor(socket.data.color);
+      });
       data.addMessage(roomName, {
         sender: "",
         text: `${userName} has joined room ${roomName}`,
@@ -81,8 +87,8 @@ io.on("connect", (socket) => {
       io.to(roomName).emit("chat update", data.roomLog(roomName));
 
       socket.on("message", (text) => {
-        const { roomName, userName } = socket.data;
-        const messageInfo = { sender: userName, text,timestamp:Date.now };
+        const { roomName, userName,color } = socket.data;
+        const messageInfo = { sender: userName, text, timestamp: Date.now,color };
         console.log(roomName, messageInfo);
         data.addMessage(roomName, messageInfo);
         io.to(roomName).emit("chat update", data.roomLog(roomName));
