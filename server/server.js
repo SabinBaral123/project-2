@@ -37,30 +37,8 @@ const httpServer = http.createServer(app);
 // new socket server
 const io = new Server(httpServer, {});
 
-// socket event handling
-// io.on("connect", socket => {
-//     console.log("New connection", socket.id);
-
-//     // Client will have to emit "join" with joinInfo
-//     socket.on("join", joinInfo => {
-//         console.log(joinInfo);
-//         // The client has to be sending joinInfo in this format
-//         const { roomName, userName } = joinInfo;
-
-//         // Using socket.data to keep track of the new client identifier: userName
-//         socket.data.userName = userName; // keep track of unique user identifier
-
-//         // Add the socket to the roomName room
-//         socket.join(roomName);
-
-//         // socket.id is a "connection id" and works as a "single socket room" for direct messages
-//       	// socket.emit("joined", roomName); // equivalent call
-//         io.to(socket.id).emit("joined", { roomName, userName });
-
-//         // Add your own event emit here
-//       	// So that clients on the room can be notified that a new user as joined
-//         socket.to(roomName).emit("user-joined", `${userName} has joined the ${roomName}`);
-//     });
+//Rooms object to track the users 
+const usersInRoom ={};
 io.on("connect", (socket) => {
   console.log("New connection", socket.id);
 
@@ -75,10 +53,38 @@ io.on("connect", (socket) => {
       joinInfo.color = colors.getRandomColor();
       socket.data = joinInfo;
       socket.join(roomName);
+
+      // adding user to rooms user list 
+      if(!usersInRoom[roomName])
+      {
+        usersInRoom[roomName] =[];
+      }
+      usersInRoom[roomName].push({userName,color:joinInfo.color});
+
+      //emitting the user-list to the room 
+      io.to(roomName).emit("update-users",usersInRoom[roomName]);
+
       socket.on("disconnect", () => {
         data.unregisterUser(userName);
         colors.releaseColor(socket.data.color);
+
+        //Removing the user you disconnected and assigning new/same list of user  
+        usersInRoom[roomName] = usersInRoom[roomName].filter(u=> u.userName !== userName);
+
+        // updating the user list after removing user if disconnected 
+
+        io.to(roomName).emit("update-users", usersInRoom[roomName]);
+        // Notify the room that the user has left
+        data.addMessage(roomName, {
+          sender: "",
+          text: `${userName} has left room ${roomName}`,
+          timestamp: Date.now(),
+        });
+        io.to(roomName).emit("chat update", data.roomLog(roomName));
       });
+
+      // Notify the room that the user has joined
+
       data.addMessage(roomName, {
         sender: "",
         text: `${userName} has joined room ${roomName}`,
@@ -87,8 +93,13 @@ io.on("connect", (socket) => {
       io.to(roomName).emit("chat update", data.roomLog(roomName));
 
       socket.on("message", (text) => {
-        const { roomName, userName,color } = socket.data;
-        const messageInfo = { sender: userName, text, timestamp: Date.now,color };
+        const { roomName, userName, color } = socket.data;
+        const messageInfo = {
+          sender: userName,
+          text,
+          timestamp: Date.now,
+          color,
+        };
         console.log(roomName, messageInfo);
         data.addMessage(roomName, messageInfo);
         io.to(roomName).emit("chat update", data.roomLog(roomName));

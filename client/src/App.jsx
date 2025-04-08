@@ -21,61 +21,73 @@ function App() {
   /* Login Info */
 
   const [joinInfo, setJoinInfo] = useState({
-    userName: '',
-    roomName: '',
-    error: ''
-});
- 
-const hasJoined = () => joinInfo.userName && joinInfo.roomName && !joinInfo.error;
-const joinRoom = joinData => socket.current.emit("join", joinData);
+    userName: "",
+    roomName: "",
+    error: "",
+  });
 
-const [chatLog, setChatLog] = useState([]);
-    const sendMessage = (text) => {
-        socket.current.send(text);
-    }
-/* WebSocket */
+  const hasJoined = () =>
+    joinInfo.userName && joinInfo.roomName && !joinInfo.error;
+  const joinRoom = (joinData) => socket.current.emit("join", joinData);
 
-// https://react.dev/reference/react/useRef
-// useRef is a React Hook that lets you reference a value that’s not needed for rendering
-const effectRan = useRef(false);
-const socket = useRef();
+  const [chatLog, setChatLog] = useState([]);
+  //keeping track of user in room
+  const [usersInRoom, setUsersInRoom] = useState([]);
+  const sendMessage = (text) => {
+    socket.current.send(text);
+  };
+  /* WebSocket */
 
-const connectToServer = () => {
+  // https://react.dev/reference/react/useRef
+  // useRef is a React Hook that lets you reference a value that’s not needed for rendering
+  const effectRan = useRef(false);
+  const socket = useRef();
+
+  const connectToServer = () => {
     if (effectRan.current) return; // Don't run twice with Strict Mode
 
     try {
-        // Only use localhost:9000 if the app is being hosted on port 5173 (i.e. Vite)
-        const wsServerAddress = window.location.port == 5173 ? "localhost:9000" : "/";
-        const ws = io.connect(wsServerAddress, { transports: ["websocket"] });
+      // Only use localhost:9000 if the app is being hosted on port 5173 (i.e. Vite)
+      const wsServerAddress =
+        window.location.port == 5173 ? "localhost:9000" : "/";
+      const ws = io.connect(wsServerAddress, { transports: ["websocket"] });
 
-        // Handle join
-        ws.on("join-response", setJoinInfo)
-        ws.on("chat update", setChatLog);
-
-        socket.current = ws;
-        effectRan.current = true; // Flag to prevent connecting twice
+      // Handle join
+      ws.on("join-response", setJoinInfo);
+      ws.on("chat update", setChatLog);
+      ws.on("update-users", setUsersInRoom);
+      socket.current = ws;
+      effectRan.current = true; // Flag to prevent connecting twice
+    } catch (e) {
+      console.warn(e);
     }
-    catch (e) {
-        console.warn(e);
-    }
-};
+  };
 
-useEffect(() => {
+  useEffect(() => {
     connectToServer();
-}, []);
-
-return (
-  <ThemeProvider theme={theme}>
+  }, []);
+  //lEAVE ROOM
+  const leaveRoom = () => {
+    socket.current.disconnect();
+    setJoinInfo({ userName: "", roomName: "", error: "" });
+  };
+  return (
+    <ThemeProvider theme={theme}>
       <Header title="TEE (Text Event Emitter) - [Sabin Baral]" />
-      <img src={logo} alt="App Logo" width="100" />
-      {
-          hasJoined() ?
-          <Chat {...joinInfo} sendMessage={sendMessage} chatLog={chatLog}/>
-          : <Login joinRoom={joinRoom} error={joinInfo.error} />
-      }
-  </ThemeProvider>
-);
-  
+      {!hasJoined() && <img src={logo} alt="App Logo" width="100" />}
+      {hasJoined() ? (
+        <Chat
+          {...joinInfo}
+          sendMessage={sendMessage}
+          chatLog={chatLog}
+          usersInRoom={usersInRoom}
+          leaveRoom={leaveRoom}
+        />
+      ) : (
+        <Login joinRoom={joinRoom} error={joinInfo.error} />
+      )}
+    </ThemeProvider>
+  );
 }
 
 export default App;
